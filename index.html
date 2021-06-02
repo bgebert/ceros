@@ -1,0 +1,1377 @@
+<html>
+    <head>
+        <!-- Google Tag Manager -->
+        <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-N6W5WC');</script>
+        <!-- End Google Tag Manager -->
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+        
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap" rel="stylesheet">
+
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.5.1/knockout-latest.debug.min.js" integrity="sha512-+9kgaOpvAGdLyaCeMWkYXt4R8m/fRgbGud4wzsJQ1cwhNYrQj+a8E3pstfc6E9zuHhbyzSiC+AHxeZ5SFVyDmQ==" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout.mapping/2.3.2/knockout.mapping.min.js" integrity="sha512-sCLnmp1UrJki3R9zwZMLXg9lXlGxJ6yFVuiSJ1pi1qRST3CJPAkJIhOHEQZz10P2gWgY3H8Y33na5Ak9PV5PLA==" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-sparklines/2.1.2/jquery.sparkline.min.js" integrity="sha512-3PRVLmoBYuBDbCEojg5qdmd9UhkPiyoczSFYjnLhFb2KAFsWWEMlAPt0olX1Nv7zGhDfhGEVkXsu51a55nlYmw==" crossorigin="anonymous"></script>
+        
+        <script>
+            var SHRM = SHRM || {};
+            SHRM.utils = {};
+            
+            (function () {
+                this.getRemoteData = function (path_to_csv){
+                    if (this.ajaxResults[path_to_csv]){
+                        return this.ajaxResults[path_to_csv]
+                    }else{
+                        var ajax = $.get(path_to_csv,function(response){
+                            //do nothing
+                        });
+                        console.log('Fetching new data: ' + path_to_csv)
+                        this.ajaxResults[path_to_csv] = ajax
+                        return ajax;
+                    }
+                };
+
+                this.convertCSVtoJSON = function (csv, arrKeys) {
+                    let vals = csv.split('\n'), ret = [];
+                    
+                    for( let i = 1, len = vals.length; i < len; i++ ){
+                        if (vals[i].length > 0){
+                            let option = vals[i].split(';');
+                            if (i == 1){
+                                ret.push('{')
+                            }else{
+                                ret.push(',{')
+                            }
+                            
+                            $.each(arrKeys, function( index, value ) {
+                                params=option[index].split('=');
+                                if (params.length == 2) {
+                                    ret.push( '"' + value + '_keyval": "' + option[index].replace(/(\r\n|\n|\r)/gm,"") + '", "' + value + '": "' + params[1].replace(/(\r\n|\n|\r)/gm,"") + '"');
+                                }else{
+                                    ret.push( '"' + value + '_keyval": "' + option[index].replace(/(\r\n|\n|\r)/gm,"") + '", "' + value + '": "' + params[0].replace(/(\r\n|\n|\r)/gm,"") + '"');
+                                }
+                                //ret.push( '"' + value + '": "' + option[index].replace(/(\r\n|\n|\r)/gm,"") + '"');
+                                if (arrKeys.length - 1 != index){ ret.push(','); }
+                            });
+                            ret.push('}')
+                        }
+                    }
+                    //console.log(JSON.parse('[' + ret.join("") + ']'));
+                    return JSON.parse('[' + ret.join("") + ']');
+                };
+
+                this.getDistinctVals = function (dataObj, key){
+                    var lookup = {};
+                    var result = [];
+
+                    for (var item, i = 0; item = dataObj[i++];) {
+                        var value = eval('item.' + key);
+
+                        if (!(value in lookup)) {
+                            lookup[value] = 1;
+                            result.push(value);
+                        }
+                    }
+
+                    return result
+                };
+
+                this.configureDropDowns = function (dataObj, key, selectObj, optgroup_label) {
+                    result = this.getDistinctVals(dataObj, key).filter(function(e) { return e !== '' })
+                    var $optgroup = selectObj
+                    if (optgroup_label){
+                        $optgroup = $("<optgroup label='" + optgroup_label + "'>"); 
+                    }
+                    $.each(result, function (index, value) {
+                        params=value.split('=');
+                        if (params.length == 2) {
+                            $optgroup.append(new Option(params[0], params[1]))
+                        }else{
+                            $optgroup.append(new Option(value, value))
+                        }
+                    });
+                    if (optgroup_label){
+                        selectObj.append($optgroup)
+                    }
+
+                    selectObj.prop('data-val', dataObj);
+                    $('.selectpicker').selectpicker('refresh');
+                };
+
+                this.disableOptions = function (arrOptions, objSelect){
+                    var $options = objSelect.find('option');
+                    $options.prop('disabled', false);
+                    
+                    if (arrOptions.length == 0) {
+                        objSelect.val('')
+                    } else {
+                        $options.each(function () {
+                            if (( $(this).val() == '' ) || ( $.inArray($(this).val(), arrOptions) >= 0 )){
+                                $(this).prop('disabled', false)
+                            }else{
+                                $(this).prop('disabled', true)
+                            }
+                        });
+                        if(objSelect.find('option:selected').prop('disabled')){
+                            objSelect.val('');
+                        }
+                    }
+                    objSelect.trigger('change');
+
+                    /*
+                    // The code below needs to be rewritten to NOT use objSelect.closest('.tab-pane').find() 
+                    if (objSelect.closest('.tab-pane').find('select')[2]){
+                        //console.log('Selected: ' + objSelect.closest('.tab-pane').find('select')[0].value + ' -- ' + objSelect.closest('.tab-pane').find('select')[1].value + ' -- ' + objSelect.closest('.tab-pane').find('select')[2].value);
+                    }
+                    */
+                    
+                };
+
+                this.filterJSON = function (dataObj, criteria){
+                    return dataObj.filter(o => Object.keys(criteria).every(k => criteria[k].some(f => o[k] === f)));
+                };
+                
+                this.resetDrillDownSiblings = function(classname, oSelects){
+                    $.each(oSelects, function( index, value ) {
+                        //change it to read class vs index
+                        if (!($( oSelects[index] ).hasClass(classname))) {
+                            $( oSelects[index] ).val('');
+                            $( oSelects[index] ).selectpicker('refresh');
+                        }
+                    });
+                };
+
+                this.filterDrillDownSiblings = function(ndx, filterBy, objContainter, arrConfigKeys){
+                    var dataObj = objContainter.find('select:nth(' + ndx + ')').prop('data-val');
+                    var filteredObj = this.filterJSON(dataObj, filterBy)
+                    var arrOptions = this.getDistinctVals(filteredObj, arrConfigKeys[ndx + 1])
+                    this.disableOptions(arrOptions, objContainter.find('select:nth(' + (ndx+1) + ')'));
+                    $('.selectpicker').selectpicker('refresh');
+                };
+
+                this.ajaxResults = {};
+
+                this.globalConfigKeys = [];
+
+                this.capitalize = function(s){
+                    if (typeof s !== 'string') return ''
+                    return s.charAt(0).toUpperCase() + s.slice(1)
+                };
+
+                this.prepHTML2CSV = function(arr, columnCount, initial){
+                    /*
+                    * Convert data array to CSV string
+                    * @param arr {Array} - the actual data
+                    * @param columnCount {Number} - the amount to split the data into columns
+                    * @param initial {String} - initial string to append to CSV string
+                    * return {String} - ready CSV string
+                    */
+
+                    var row = ''; // this will hold data
+                    var delimeter = ','; // data slice separator, in excel it's `;`, in usual CSv it's `,`
+                    var newLine = '\r\n'; // newline separator for CSV row
+
+                    /*
+                    * Convert [1,2,3,4] into [[1,2], [3,4]] while count is 2
+                    * @param _arr {Array} - the actual array to split
+                    * @param _count {Number} - the amount to split
+                    * return {Array} - splitted array
+                    */
+                    function splitArray(_arr, _count) {
+                        var splitted = [];
+                        var result = [];
+                        _arr.forEach(function(item, idx) {
+                        if ((idx + 1) % _count === 0) {
+                            splitted.push(item);
+                            result.push(splitted);
+                            splitted = [];
+                        } else {
+                            splitted.push(item);
+                        }
+                        });
+                        return result;
+                    }
+                    var plainArr = splitArray(arr, columnCount);
+                    // don't know how to explain this, so you'll just have to like follow the code to understand
+                    // it converts `['a', 'b', 'c']` to `a,b,c` string
+                    plainArr.forEach(function(arrItem) {
+                        arrItem.forEach(function(item, idx) {
+                        row += item + ((idx + 1) === arrItem.length ? '' : delimeter);
+                        });
+                        row += newLine;
+                    });
+                    return initial + row;
+                };
+
+                this.getUrlParameter = function getUrlParameter(sParam) {
+                    var sPageURL = window.location.search.substring(1),
+                        sURLVariables = sPageURL.split('&'),
+                        sParameterName,
+                        i;
+
+                    for (i = 0; i < sURLVariables.length; i++) {
+                        sParameterName = sURLVariables[i].split('=');
+
+                        if (sParameterName[0] === sParam) {
+                            return typeof sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+                        }
+                    }
+                    return false;
+                };
+
+                this.loadScript = src => {
+                    return new Promise((resolve, reject) => {
+                        const script = document.createElement('script')
+                        script.type = 'text/javascript'
+                        script.onload = resolve
+                        script.onerror = reject
+                        script.src = src
+                        document.head.append(script)
+                    })
+                }
+        
+                this.sleep = function(ms){
+                    return new Promise(resolve => setTimeout(resolve, ms));
+                }
+        
+            }).apply(SHRM.utils);
+
+            function initDrillDown(objContainter){
+                if (SHRM.utils.selectPickersLoaded === undefined){
+                    var configKeys = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-config-keys"]
+                    var configPath = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-config-path"]
+                    var filterBy = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-filterby"]
+                    
+                    if (configKeys){
+                        arrConfigKeys = eval(configKeys);
+                    }else{
+                        arrConfigKeys = SHRM.utils.pageConfig.configKeys
+                    }
+
+                    var dataObj = null
+                    if ((objContainter) && (arrConfigKeys.length == 3)){
+                        if (SHRM.utils.dataObj){
+                            dataObj = SHRM.utils.dataObj
+
+                            if (filterBy == 'by-1'){
+                                SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[0] + '_keyval', $('.selectpicker-1'), SHRM.utils.capitalize(arrConfigKeys[0]))
+                                SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[1] + '_keyval', $('.selectpicker-1'), SHRM.utils.capitalize(arrConfigKeys[1]))
+                                SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[2] + '_keyval', $('.selectpicker-1'), SHRM.utils.capitalize(arrConfigKeys[2]))
+                            }else{
+                                SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[0] + '_keyval', $('.selectpicker-1'))
+                                SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[1] + '_keyval', $('.selectpicker-2'))
+                                SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[2] + '_keyval', $('.selectpicker-3'))
+                            }
+                        }else{
+                            if (configPath == null){
+                                alert('The path to the config has not been configured for ' + objContainter.attr('id'));
+                            }else{
+                                $.when(SHRM.utils.getRemoteData(configPath)).done(function(response,status,xhrObj){
+                                    dataObj = SHRM.utils.convertCSVtoJSON(response, arrConfigKeys)
+                                    
+                                    if (filterBy == 'by-1'){
+                                        SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[0] + '_keyval', $('.selectpicker-1'), SHRM.utils.capitalize(arrConfigKeys[0]))
+                                        SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[1] + '_keyval', $('.selectpicker-1'), SHRM.utils.capitalize(arrConfigKeys[1]))
+                                        SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[2] + '_keyval', $('.selectpicker-1'), SHRM.utils.capitalize(arrConfigKeys[2]))
+                                    }else{
+                                        SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[0] + '_keyval', $('.selectpicker-1'))
+                                        SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[1] + '_keyval', $('.selectpicker-2'))
+                                        SHRM.utils.configureDropDowns(dataObj, arrConfigKeys[2] + '_keyval', $('.selectpicker-3'))
+                                    }
+
+                                }).fail(function(response,status,xhrObj){
+                                    console.error(response)
+                                    console.error('The required config was not found at ' + configPath)
+                                });
+                            }
+                        }
+                    }
+                    SHRM.utils.selectPickersLoaded = true
+                }
+            };
+            
+            function getJson(){
+                var json = '{"list":' + JSON.stringify(SHRM.utils.tabs) + '}'
+                return json;
+            }
+
+            function ViewModel(josnObj){
+                //this.list = josnObj.list;
+                this.tabledata_filtered = SHRM.utils.data.tabledata
+            }
+
+            function initHTML(){
+                //var json  = getJson();
+                //json = '{"list":' + myjson + '}'
+                //var jObj = JSON.parse(json);
+
+                //Creating view model for html
+                //var viewModel = new ViewModel(jObj);
+
+                var viewModel = {
+                    filtered_results: ko.observableArray()
+                }
+                SHRM.utils.pageConfig.viewModel = viewModel
+                
+                //Applying the view model to html UI
+                ko.applyBindings(SHRM.utils.pageConfig.viewModel); 
+            }
+
+            function initDefaults(filterBy, globalConfigKeys, TopLevelType = null, SubLevelType = null, selectpicker = null, categoryType = null){
+                var bCallUpdateURL = true
+                var arrURLparams = window.location.hash.split('/')
+                
+                // Determine if the page will be healthcare, retirement, etc
+                if ((arrURLparams.length >= 3) && (arrURLparams.length <= 5)){
+                    // set defaults from URL params
+                    if (String(arrURLparams[1]) != '') { TopLevelType = String(arrURLparams[1])}
+                    if (String(arrURLparams[2]) != '') { SubLevelType = String(arrURLparams[2])}
+                }
+                if(SubLevelType){
+                    if (SHRM.utils[SubLevelType]){
+                        SHRM.utils.tabs = SHRM.utils[SubLevelType]
+                        categoryType = SHRM.utils.tabs[0].id
+                    }else{
+                        alert('The configuration for SHRM.utils.' + SubLevelType + ' has not been configured properly.')
+                    }
+                }else{
+                    alert('URL is not properly configured.\n\nA properly configured URL should look similar to:\n.../index.html#/benefitsPortal/healthcare')
+                    return
+                }
+                
+                // Init variables
+                SHRM.utils.pageConfig = {}
+                SHRM.utils.pageConfig.filterBy = filterBy
+                SHRM.utils.pageConfig.configKeys = globalConfigKeys
+                SHRM.utils.pageConfig.TopLevelType = TopLevelType
+                SHRM.utils.pageConfig.SubLevelType = SubLevelType
+                SHRM.utils.pageConfig.categoryType = categoryType
+
+                initHTML()
+
+                if (categoryType){
+                    SHRM.utils.pageConfig.categoryText = $('a[href$="' + categoryType + '"]').text()
+                }
+                SHRM.utils.pageConfig.selectpicker_1 = selectpicker
+                SHRM.utils.pageConfig.exportType = ''
+                
+                if (arrURLparams.length == 5){
+                    // set defaults from URL params
+                    if (String(arrURLparams[1]) != '') { TopLevelType = String(arrURLparams[1])}
+                    if (String(arrURLparams[2]) != '') { SubLevelType = String(arrURLparams[2])}
+                    if ((String(arrURLparams[3]) != '') && (String(arrURLparams[3]) != 'all')) { 
+                        selectpicker = String(arrURLparams[3])
+                        SHRM.utils.pageConfig.selectpicker_1 = selectpicker
+                        localStorage.setItem("SHRM.utils." + SHRM.utils.pageConfig.TopLevelType + ".selectpicker_1", selectpicker)
+                    }
+                    
+                    if (String(arrURLparams[4]) != '') { 
+                        expected_tab = String(arrURLparams[4])
+                        if (parseInt(expected_tab[expected_tab.length -1]) > SHRM.utils[SubLevelType].length) {
+                            categoryType = expected_tab.replace(expected_tab[expected_tab.length -1], '1')
+                        }else{
+                            categoryType = String(arrURLparams[4])
+                        }
+                        SHRM.utils.pageConfig.categoryType = '#' + categoryType
+                        SHRM.utils.pageConfig.categoryText = $('a[href$="' + categoryType + '"]').text()
+                        localStorage.setItem("SHRM.utils." + SHRM.utils.pageConfig.TopLevelType + "." + SubLevelType + ".categoryType", '#' + categoryType)
+                        $('a[href$="' + categoryType + '"]').trigger('click')
+                        bCallUpdateURL = false
+                    }
+                }else{
+                    // set defaults from local storage
+                    if (localStorage.getItem("SHRM.utils." + SHRM.utils.pageConfig.TopLevelType + ".selectpicker_1")){
+                        selectpicker = localStorage.getItem("SHRM.utils." + SHRM.utils.pageConfig.TopLevelType + ".selectpicker_1")
+                        SHRM.utils.pageConfig.selectpicker_1 = selectpicker
+                    }
+
+                    if (localStorage.getItem("SHRM.utils." + SHRM.utils.pageConfig.TopLevelType + ".categoryType")) {
+                        categoryType = localStorage.getItem("SHRM.utils." + SHRM.utils.pageConfig.TopLevelType + "." + SubLevelType +  ".categoryType")
+                        SHRM.utils.pageConfig.categoryType = categoryType
+                        SHRM.utils.pageConfig.categoryText = $('a[href$="' + categoryType + '"]').text()
+                        $('a[href$="' + categoryType + '"]').trigger('click')
+                        bCallUpdateURL = false
+                    }
+                }
+                
+                $('body').removeClass('hidden')
+
+                // No tab (categoryType) has been previously selected, so the 1st tab is loaded by default
+                // Unfortunately, 'show.bs.tab' is not triggered as expected, so we must force it
+                $('a[href$="#' + categoryType + '"]').tab('show')
+                //$('a[href$="#' + categoryType + '"]').trigger('show.bs.tab')
+                //$('a[href$="#' + categoryType + '"]').trigger('shown.bs.tab')
+                if (bCallUpdateURL) { updateURL() }
+            }
+
+            function buildURL(){
+                url = '#/' + SHRM.utils.pageConfig.TopLevelType + '/' + SHRM.utils.pageConfig.SubLevelType
+                if (SHRM.utils.pageConfig.selectpicker_1){
+                    //url = url + '/' + $('.selectpicker-1').attr('data-val')
+                    url = url + '/' + SHRM.utils.pageConfig.selectpicker_1 
+                }else{
+                    //url = url + '/' + $('.selectpicker-1').val()
+                    url = url + '/all'
+                }
+
+                url = url + '/' + SHRM.utils.pageConfig.categoryType.replace('#','')
+
+                if (SHRM.utils.pageConfig.exportType){
+                    url = url + '/' + SHRM.utils.pageConfig.exportType
+                }
+                return url
+            }
+
+            function updateURL(){
+                window.history.replaceState(null, null, buildURL())
+                
+                pushToGTM()
+            }
+
+            function pushToGTM(){
+                if (window.dataLayer){
+                    // The values i mapped to below were wrong, i had to remap them.  See the second set for the correct way.
+                    //var event = SHRM.utils.pageConfig.TopLevelType + " | " + SHRM.utils.pageConfig.SubLevelType
+                    //var eventCategory = SHRM.utils.pageConfig.categoryText
+                    //var eventLabel = (SHRM.utils.pageConfig.selectpicker_1) ? SHRM.utils.pageConfig.selectpicker_1 : 'all'
+                    //var eventAction = SHRM.utils.pageConfig.exportType
+                    //var eventValue = 0
+                    
+                    var event = 'GAEvent'
+                    var eventCategory = SHRM.utils.pageConfig.TopLevelType + " | " + SHRM.utils.pageConfig.SubLevelType
+                    var eventLabel = SHRM.utils.pageConfig.categoryText
+                    var eventAction = (SHRM.utils.pageConfig.selectpicker_1) ? SHRM.utils.pageConfig.selectpicker_1 : 'all'
+                    var eventValue = SHRM.utils.pageConfig.exportType
+                    //debugger
+                    console.log('pushToGTM:\nevent=' + event + ';\neventCategory=' + eventCategory + ';\neventLabel=' + eventLabel + ';\neventAction=' + eventAction + ';\neventValue=' + eventValue)
+                    //debugger
+                    window.dataLayer.push({            
+                        'event': event,            
+                        'eventCategory': eventCategory,            
+                        'eventLabel': eventLabel,
+                        'eventAction': eventAction,            
+                        'eventValue': eventValue          
+                    });
+                }
+
+                SHRM.utils.pageConfig.exportType = null
+
+                // The code above does NOT seem to want to appear in Google Analytics.
+                // The code below was written to see if this would work and appear in Google Analytics.
+
+                //src = 'gtm.html#/' + SHRM.utils.pageConfig.TopLevelType + '/' + SHRM.utils.pageConfig.SubLevelType + '/' + eventCategory + '/' + eventLabel
+                src = 'gtm.html?' + 'event=' + encodeURIComponent(event) + '&eventCategory=' + encodeURIComponent(eventCategory) + '&eventLabel=' + encodeURIComponent(eventLabel)
+                if (eventAction){
+                    if (eventAction != ''){
+                        src = src + '&eventAction=' + encodeURIComponent(eventAction)
+                    }
+                }
+                $('#gtm').attr('src', src)
+            }
+
+            function showSpinner(bShow){
+                if (bShow){
+                    $('#btnExportGroup').addClass('hidden')
+                    $('#spinner').removeClass('hidden')
+                    
+                }else{
+                    $('#spinner').addClass('hidden')
+                    $('#btnExportGroup').removeClass('hidden')
+                }
+            }
+
+            $(document).ready(function() {
+                console.time('Page load');
+
+                window.dataLayer = window.dataLayer || [];
+
+                $('iframe').on('load', function (event){
+                    var iframes = $('.responsive_iframe')   //$( event.target ).closest('.tab-pane').find('iframe')
+                    var changeDecrease = false;
+
+                    for( var i = 0; i < iframes.length; i++) {
+                        if ($(iframes[i])[0].contentDocument.title.indexOf("404") >= 0){
+                            console.log("404 Error: Couldn't locate " + $(iframes[i])[0].src)
+                            $(iframes[i])[0].src = 'about:blank'
+                        }
+                        
+                        //Find all NA in the iframe and replace it with --
+                        //This is being done b/c we didn't know how to remove it within RStudio
+                        var iframeDoc = $(iframes[i])[0].contentWindow.document;
+                        var vals = $(iframeDoc).find("body").find('td:contains(" NA ")')
+                        for( let i = 0, len = vals.length; i < len; i++ ){
+                            $(vals[i]).text(' -- ');
+                        }
+                        //$(iframeDoc).find("body").append('<link rel="preconnect" href="https://fonts.gstatic.com">')
+                        //$(iframeDoc).find("body").append('<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap" rel="stylesheet">')
+                        //$(iframeDoc).find("body").css("font-family", "'Montserrat', sans-serif")
+                        $(iframeDoc).find("body").css("padding", "15px 50px 1px 20px")
+                        
+                        //Find all cells without an up/down/flat indicator and add it
+                        //This is being done b/c we didn't know how to add it within RStudio
+                        var vals = $(iframeDoc).find("body").find('.glyphicon-')
+                        for( let i = 0, len = vals.length; i < len; i++ ){
+                            amtChange = $(vals[i]).closest('td').prev('td').text();
+                            classIndicator = 'glyphicon-arrow-up';
+                            $(vals[i]).parent().css('color','silver');
+                            if (amtChange.indexOf(' 0%') >= 0){
+                                classIndicator = 'glyphicon-minus'
+                            }else{
+                                if (amtChange.indexOf('-') >= 0) { classIndicator = 'glyphicon-arrow-down' }
+                            }
+                            $(vals[i]).addClass(classIndicator).removeClass('.glyphicon-')
+                        }
+                        
+                        if ((iframes[i]) && (iframes[i].contentWindow) && (iframes[i].contentWindow.document) && (iframes[i].contentWindow.document.body)){
+                            //iframes[i].width  = '100%';
+                            iframes[i].height = iframes[i].contentWindow.document.body.scrollHeight + 'px';
+                        }
+                    }
+                });
+
+                $( window ).on('resize', function(event) {
+                    //var iframes = $('iframe')
+                    var iframes = $('.responsive_iframe')
+                    
+                    for( var i = 0; i < iframes.length; i++) {
+                        if ((iframes[i]) && (iframes[i].contentWindow) && (iframes[i].contentWindow.document) && (iframes[i].contentWindow.document.body)){
+                            if ((iframes[i].src == '') || (iframes[i].src == 'about:blank')){
+                                //iframes[i].width  = '100%';
+                                iframes[i].height = '0px';
+                            }else{
+                                //iframes[i].width  = '100%';
+                                iframes[i].height = iframes[i].contentWindow.document.body.scrollHeight + 'px';
+                            }
+                        }
+                    }
+                    //console.log('on resize');
+                } );
+
+                $('.btn-filter').on('click', function (event){
+                    var src = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-file-prefix"] + '-'
+                    var filterBy = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-filterby"]
+                    var configKeys = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-config-keys"]
+
+                    if (filterBy == 'by-1'){
+                        //The following code block is here to build the URL Path to match the iframe FILE naming convention ONLY.
+                        var arrConfigKeys = SHRM.utils.pageConfig.configKeys;
+                        var optGroup = $('.selectpicker-1').find('option:selected').closest('optgroup').attr('label')
+                        if (configKeys){
+                            arrConfigKeys = eval(configKeys);
+                        }else{
+                            arrConfigKeys = SHRM.utils.pageConfig.configKeys
+                        }
+
+                        $.each(arrConfigKeys, function( index, value ) {
+                            if ((optGroup) && (optGroup.toLowerCase() == value)){
+                                src += $('.selectpicker-1').val();
+                            }else{
+                                src += '-'
+                            }
+                        });
+
+                        src += '.html'
+                    }else{
+                        src = src + $('.selectpicker-1').val() + '-' + $('.selectpicker-2').val() + '-' + $('.selectpicker-3').val() + '.html'
+                    }
+                    
+                    $('.responsive_iframe').attr('src', src)
+                    $('.btn-export').removeClass('disabled');
+
+                    if (SHRM.utils.data.tabledata){
+                        if (SHRM.utils.pageConfig.filterBy == "by-1"){
+                            var filtered_by_category = SHRM.utils.data.tabledata.filter(a => a.eventCategory == SHRM.utils.pageConfig.categoryText);
+                            if (SHRM.utils.pageConfig.selectpicker_1){
+                                filtered_by = filtered_by_category.filter(a => a.eventLabel == SHRM.utils.pageConfig.selectpicker_1);
+                            }else{
+                                filtered_by = filtered_by_category.filter(a => a.eventLabel == 'all');
+                            }
+                            SHRM.utils.data.tabledata_filtered = filtered_by
+                        }
+                        
+                        ko.mapping.fromJSON(JSON.stringify(filtered_by), {}, SHRM.utils.pageConfig.viewModel.filtered_results);
+                    }
+
+                    $('.inlinesparkline').each(function () {
+                        myvalues = JSON.parse("[" + $(this).attr('myvalues') + "]")
+                        $(this).sparkline(myvalues, {width: '60', height: '20'} );
+                    });
+
+                    $('.indicator').each(function () {
+                        value = JSON.parse("[" + $(this).attr('myindicator') + "]")
+                        if (value == 2) {$(this).addClass("fas fa-arrow-up indicator_significant_up");}
+                        if (value == 1) {$(this).addClass("fas fa-arrow-up indicator_not_significant");}
+                        if (value == 0) {$(this).addClass("fas fa-arrows-alt-h indicator_not_significant");}
+                        if (value == -1) {$(this).addClass("fas fa-arrow-down indicator_not_significant");}
+                        if (value == -2) {$(this).addClass("fas fa-arrow-down indicator_significant_down");}
+                    });
+
+                    console.log('on click: ' + src);
+                });
+
+                $(document).on('shown.bs.tab', function (event) {
+                    var arrHREF = $(event.target).prop('href').split('#')
+                    var url = ''
+                    if (arrHREF.length == 2){
+                        url = arrHREF[1]
+                        var obj = $('#' + url)
+                        SHRM.utils.pageConfig.categoryType = '#' + url
+                        localStorage.setItem("SHRM.utils." + SHRM.utils.pageConfig.TopLevelType + "." + SHRM.utils.pageConfig.SubLevelType + ".categoryType", '#' + url)
+                        //$('.navpicker option[value=' + $(event.target).attr('id') + ']').attr('selected','selected')
+                        //$('.navpicker option[value=' + SHRM.utils.pageConfig.categoryType + ']').attr('selected','selected')
+                        $(".navpicker option[value='" + SHRM.utils.pageConfig.categoryType.replace('#','') + "']").prop("selected", true);
+                        //$('.navpicker').trigger('change')
+                        $('.navpicker').find('.filter-option-inner-inner').text($(event.target).text())
+                    }
+                    
+                    if (obj) {     //if ((obj) && (obj.is(':visible'))){
+                        if (SHRM.utils.pageConfig.selectpicker_1){
+                            $('.selectpicker-1').val(SHRM.utils.pageConfig.selectpicker_1)
+                            $(".selectpicker-1 option[value='" + SHRM.utils.pageConfig.selectpicker_1 + "']").prop("selected", true);
+                            //obj.find('.filter-option-inner-inner').text($(".selectpicker-1 option[value='" + SHRM.utils.pageConfig.selectpicker_1 + "']").text())
+                            $('.nav_layer3').find('.filter-option-inner-inner').text($('.selectpicker-1 option:selected').text())
+                        }
+                        $('.btn-filter').trigger('click')
+                        $('.selectpicker').focus()
+                        console.log('shown.bs.tab: ' + obj.is(':visible'))
+                    }
+
+                    updateURL()
+                });
+
+                $(document).on('show.bs.tab', function (event) {
+                    SHRM.utils.pageConfig.categoryText = $( event.target ).text()
+                    SHRM.utils.pageConfig.categoryType = $( event.target ).attr('href')
+                    id = $( event.target ).attr('href')
+                    initDrillDown($(id));
+                    if ($('.selectpicker-1').hasClass('selectpicker')){
+                        // This is being done because of a timing issue that caused the drop down to not display properly
+                        // Basically, it wasn't fully loaded before the styling was finished
+                    }else{
+                        $('.selectpicker-1').addClass('selectpicker')
+                    }
+                });
+                
+                $('.selectpicker-1').on('change', function (event) {
+                    //var objContainter = $( event.target ).closest('.tab-pane');
+
+                    var filterBy = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-filterby"]
+                    var configKeys = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-config-keys"]
+                    
+                    
+                    if (configKeys){
+                        arrConfigKeys = eval(configKeys);
+                    }else {
+                        arrConfigKeys = SHRM.utils.pageConfig.configKeys
+                    }
+                    
+                    if (filterBy == 'by-all'){
+                        var ndx = 0;
+                        var filterBy = { [arrConfigKeys[ndx]]: [$('.selectpicker-1').val()] }  //filterBy = { KEY1: ["VALUE1", "VALUE2"], KEY2: ["VALUE3", "VALUE4"] }
+                        SHRM.utils.filterDrillDownSiblings(ndx, filterBy, objContainter, arrConfigKeys);
+                    }else{
+                        if (filterBy == 'by-3'){
+                            SHRM.utils.resetDrillDownSiblings('selectpicker-1', $('select'));
+                        };
+                    }
+                    
+                    $('.btn-export').addClass('disabled')
+
+                    SHRM.utils.pageConfig.selectpicker_1 = $( event.target ).val()
+                    localStorage.setItem("SHRM.utils." + SHRM.utils.pageConfig.TopLevelType + ".selectpicker_1", $( event.target ).val())
+                    // to auto load the data without having to select the Filter button...
+                    // uncomment the lines below and add the 'hidden' to all of the filter buttons
+                    $('.btn-filter').trigger('click')
+
+                    updateURL()
+                });
+
+                $('.selectpicker-2').on('change', function (event) {
+                    var arrConfigKeys = SHRM.utils.pageConfig.configKeys;
+                    var configKeys = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-config-keys"]
+                    var filterBy = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-filterby"]
+
+                    if (configKeys){
+                        arrConfigKeys = eval(configKeys);
+                    }else{
+                        arrConfigKeys = SHRM.utils.pageConfig.configKeys
+                    }
+                    
+                    if (filterBy == 'by-all'){
+                        var ndx = 1
+                        var filterBy = { [arrConfigKeys[ndx-1]]: [$('.selectpicker-1').val()], [arrConfigKeys[ndx]]: [$('.selectpicker-2').val()] } //filterBy = { KEY1: ["VALUE1", "VALUE2"], KEY2: ["VALUE3", "VALUE4"] }
+                        SHRM.utils.filterDrillDownSiblings(ndx, filterBy, objContainter, arrConfigKeys);
+                    }else{
+                        if (filterBy == 'by-3'){
+                            SHRM.utils.resetDrillDownSiblings('selectpicker-2', $('select'));
+                        };
+                    }
+                });
+
+                $('.selectpicker-3').on('change', function (event) {
+                    var filterBy = SHRM.utils.tabs.find(tab => tab.name === SHRM.utils.pageConfig.categoryText)["data-val-filterby"]
+
+                    if (filterBy == 'by-all'){
+                        //console.log('Selected: ' + objContainter.find('select:nth(0)').find('option:selected').val() + ' -- ' + objContainter.find('select:nth(1)').find('option:selected').val() + ' -- ' + objContainter.find('select:nth(2)').find('option:selected').val());
+                    }else{
+                        if (filterBy == 'by-3'){
+                            SHRM.utils.resetDrillDownSiblings('selectpicker-3', $('select'));
+                        };
+                    }
+                });
+                
+                $('.navpicker').on('change', function (event) {
+                    $('#' + $( event.target ).val()).trigger('click')
+                });
+
+                $('.export_as_csv').on('click', function (event) {
+                    showSpinner(true)
+                    var iframes = $('.responsive_iframe')
+                    
+                    for( var i = 0; i < iframes.length; i++) {
+                        if ($(iframes[i])[0].contentDocument.title.indexOf("404") >= 0){
+                            console.log("404 Error: Couldn't locate " + $(iframes[i])[0].src)
+                            $(iframes[i])[0].src = 'about:blank'
+                        }
+
+                        var iframeDoc = $(iframes[i])[0].contentWindow.document;
+                        var titles = [];
+                        var data = [];
+
+                        //Get the table headers (-- no empty column headers), this will be CSV headers
+                        //The count of headers will be CSV string separator
+                        $(iframeDoc).find('.table th').each(function() {
+                            title = $(this).text().trim()
+                            if (title.length > 0) {
+                            titles.push(title);
+                            }
+                        });
+
+                        //Get the actual data, this will contain all the data, in 1 array
+                        maxCols = titles.length
+                        $(iframeDoc).find('.table tr').each(function(index, obj) {
+                            //if (colCount < maxCols) {
+                                //data.push($(this).text());
+                            //}
+                            colCount = 0
+                            $( obj ).find('td').each(function(){
+                                if (colCount < maxCols) {
+                                    content = $(this).text().trim();
+                                    data.push(content);
+                                }
+                                colCount += 1
+                            });
+                        });
+
+                        //Convert our data to CSV string
+                        var CSVString = SHRM.utils.prepHTML2CSV(titles, titles.length, '');
+                        CSVString = SHRM.utils.prepHTML2CSV(data, titles.length, CSVString);
+
+                        //Add SHRM Copyright
+                        emptyColumns = ',';
+                        CSVString += 'Copyright \u00A9 2020 Society for Human Resource Management \u00B7 Source: Employee Benefits 2020' + emptyColumns.repeat(titles.length-1) + '\n'
+
+                        //Make CSV downloadable
+                        var downloadLink = document.createElement("a");
+                        //CSVString = JSON.stringify(SHRM.utils.dataObj)    // Use this if you want to download the JSON used to configure the dropdowns.
+                        var blob = new Blob(["\ufeff", CSVString]);
+                        var url = URL.createObjectURL(blob);
+
+                        downloadLink.href = url;
+                        
+                        //Create Name for download file - safe for windows, mac, etc
+                        var $tab = $('.nav-tabs'), $active = $tab.find('.nav-link.active'), tab_text = $active.text();
+                        var select_text = $('.selectpicker-1 option:selected').text();
+                        downloadName = 'SHRM Benefits 2020 - ' + tab_text.replace(/[^a-zA-Z0-9-_\.]/g, ' ').trim() + ' - ' + select_text.replace(/[^a-zA-Z0-9-_\.]/g, ' ').trim()
+                        downloadName = downloadName.replace('   ', ' ')
+                        downloadName = downloadName.replace('  ', ' ')
+                        //downloadLink.download = string(downloadName)  //I don't know why this method does not work.
+                        downloadLink.download = "data.csv".replace('data', downloadName);
+
+                        //Actually download CSV
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                    }
+
+                    SHRM.utils.pageConfig.exportType = $( event.target ).attr('alt-href')
+                    pushToGTM()
+                    //updateURL()
+                    showSpinner(false)
+                });
+
+                $('.export_as_image').on('click', function (event) {
+                    showSpinner(true)
+
+                    SHRM.utils.loadScript("https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.7/dist/html2canvas.min.js")
+                        .then(() => {
+                            var iframes = $('.responsive_iframe')
+                    
+                            for( var i = 0; i < iframes.length; i++) {
+                                var iframeDoc = $(iframes[i])[0].contentWindow.document;
+                                
+                                $('.drilldown_image').append(iframeDoc.body.outerHTML).append($('.drilldown_footer')[0].outerHTML);
+                                html2canvas(document.querySelector('.drilldown_image')).then(canvas => {
+                                    console.log(canvas);
+                                    //saveAs(canvas.toDataURL(), 'file-name.png');
+
+                                    //Create Name for download file - safe for windows, mac, etc
+                                    var $tab = $('.nav-tabs'), $active = $tab.find('.nav-link.active'), tab_text = $active.text();
+                                    var select_text = $('.selectpicker-1 option:selected').text();
+                                    downloadName = 'SHRM Benefits 2020 - ' + tab_text.replace(/[^a-zA-Z0-9-_\.]/g, ' ').trim() + ' - ' + select_text.replace(/[^a-zA-Z0-9-_\.]/g, ' ').trim()
+                                    downloadName = downloadName.replace('   ', ' ')
+                                    downloadName = downloadName.replace('  ', ' ')
+
+                                    var link = document.createElement("a");
+                                    document.body.appendChild(link);
+                                    link.download = downloadName + '.png'       //link.download = "data.png";
+                                    link.href = canvas.toDataURL("image/png");
+                                    link.target = '_blank';
+                                    link.click();
+                                    
+                                    $('.drilldown_image').empty()
+
+                                    SHRM.utils.sleep(2000).then(() => { showSpinner(false); });
+                                });
+                            }
+                                    
+                            //alert($( event.target ).attr('alt-href'))
+                            SHRM.utils.pageConfig.exportType = $( event.target ).attr('alt-href')
+                            pushToGTM()
+                            
+                        })
+                        .catch(() => console.error('Something went wrong loading dynamic JS'))
+                });
+
+                $('.export_as_pdf').on('click', function (event) {
+                    showSpinner(true)
+                    
+                    SHRM.utils.loadScript("https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.7/dist/html2canvas.min.js")
+                        .then(() => SHRM.utils.loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.min.js"))
+                        .then(() => {
+                            var iframes = $('.responsive_iframe')
+                    
+                            for( var i = 0; i < iframes.length; i++) {
+                                var iframeDoc = $(iframes[i])[0].contentWindow.document;
+                                
+                                $('.drilldown_image').append(iframeDoc.body.outerHTML).append($('.drilldown_footer')[0].outerHTML);
+                                html2canvas(document.querySelector('.drilldown_image')).then(canvas => {
+                                    console.log(canvas);
+                                    //saveAs(canvas.toDataURL(), 'file-name.png');
+
+                                    //Create Name for download file - safe for windows, mac, etc
+                                    var $tab = $('.nav-tabs'), $active = $tab.find('.nav-link.active'), tab_text = $active.text();
+                                    var select_text = $('.selectpicker-1 option:selected').text();
+                                    downloadName = 'SHRM Benefits 2020 - ' + tab_text.replace(/[^a-zA-Z0-9-_\.]/g, ' ').trim() + ' - ' + select_text.replace(/[^a-zA-Z0-9-_\.]/g, ' ').trim()
+                                    downloadName = downloadName.replace('   ', ' ')
+                                    downloadName = downloadName.replace('  ', ' ')
+
+                                    var imgData = canvas.toDataURL('image/jpeg');  
+                                    var doc = new jsPDF('l', 'mm');
+                                    doc.addImage(imgData, 'JPG', 10, 10);
+                                    doc.save(downloadName + '.pdf');
+                                    
+                                    $('.drilldown_image').empty()
+                                    
+                                    SHRM.utils.sleep(2000).then(() => { showSpinner(false); });
+                                });
+                            }
+
+                            //alert($( event.target ).attr('alt-href'))
+                            SHRM.utils.pageConfig.exportType = $( event.target ).attr('alt-href')
+                            pushToGTM()
+                            
+                        })
+                        .catch(() => console.error('Something went wrong loading dynamic JS'))                    
+                });
+                         
+                $('.export_as').on('mouseover', function(event) {
+                    $( event.target ).attr('href', buildURL() + '/' + $( event.target ).attr('alt-href'))
+                } );
+
+                $('.export_as').on('mouseout', function(event) {
+                    $( event.target ).attr('href', '#')
+                } );
+
+                SHRM.utils.dataObj = [
+                    {"region_keyval":"Midwest=M","region":"M","industry_keyval":"","industry":"","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"Northeast=NE","region":"NE","industry_keyval":"","industry":"","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"South=S","region":"S","industry_keyval":"","industry":"","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"West=W","region":"W","industry_keyval":"","industry":"","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Construction=CONSTR","industry":"CONSTR","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Financial Activities=FINANCE","industry":"FINANCE","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Government & Education=GOVTEDU","industry":"GOVTEDU","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Healthcare and Social Assistance=HLTHSS","industry":"HLTHSS","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Leisure & Hospitality=LSHOSP","industry":"LSHOSP","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Manufacturing=MANFCT","industry":"MANFCT","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Other=OTHER","industry":"OTHER","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Other Services=OTHSERV","industry":"OTHSERV","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Professional & Business Services=PROFBUS","industry":"PROFBUS","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Retail, Wholesale, Transport, Utilities=R_W_T_U","industry":"R_W_T_U","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"","industry":"","orgsize_keyval":"1-99=SM","orgsize":"SM"},
+                    {"region_keyval":"","region":"","industry_keyval":"","industry":"","orgsize_keyval":"100-499=MD","orgsize":"MD"},
+                    {"region_keyval":"","region":"","industry_keyval":"","industry":"","orgsize_keyval":"500-4999=LG","orgsize":"LG"},
+                    {"region_keyval":"","region":"","industry_keyval":"","industry":"","orgsize_keyval":"5000+=XL","orgsize":"XL"}
+                ]
+
+                /*
+                SHRM.utils.dataObj = [
+                    {"region_keyval":"Midwest=M","region":"M","industry_keyval":"","industry":"","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"Northeast=NE","region":"NE","industry_keyval":"","industry":"","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"South=S","region":"S","industry_keyval":"","industry":"","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"West=W","region":"W","industry_keyval":"","industry":"","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Construction=CONSTR","industry":"CONSTR","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Education & Health Services=EDUHLTH","industry":"EDUHLTH","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Financial Activities=FINANCE","industry":"FINANCE","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Government=GOVT","industry":"GOVT","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Leisure & Hospitality=LSHOSP","industry":"LSHOSP","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Manufacturing=MANFCT","industry":"MANFCT","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Other=OTHER","industry":"OTHER","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Other Services=OTHSERV","industry":"OTHSERV","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Professional & Business Services=PROFBUS","industry":"PROFBUS","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"Retail, Wholesale, Transport, Utilities=R_W_T_U","industry":"R_W_T_U","orgsize_keyval":"","orgsize":""},
+                    {"region_keyval":"","region":"","industry_keyval":"","industry":"","orgsize_keyval":"1-99=SM","orgsize":"SM"},
+                    {"region_keyval":"","region":"","industry_keyval":"","industry":"","orgsize_keyval":"100-499=MD","orgsize":"MD"},
+                    {"region_keyval":"","region":"","industry_keyval":"","industry":"","orgsize_keyval":"500-4999=LG","orgsize":"LG"},
+                    {"region_keyval":"","region":"","industry_keyval":"","industry":"","orgsize_keyval":"5000+=XL","orgsize":"XL"}
+                ]
+                */
+
+                // In the arrays below, if "data-val-filterby" = "by-1" then, region, industry and orgsize are in 1 dropdown
+                // if you want the ability to only show the industries (or orgsize) based off selected region,
+                // then change the value to "by-3" or "by-all".  Try both to understand how they work.
+                SHRM.utils.healthcare = [
+                    {
+                        "name": "General Health",
+                        "data-val-file-prefix": "./data/GenHealth/GenHealth",
+                        "id": "drilldown-tab1",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "HSA & FSA",
+                        "data-val-file-prefix": "./data/HealthSavings/HealthSavings",
+                        "id": "drilldown-tab2",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Prescription Drug",
+                        "data-val-file-prefix": "./data/PrescriptionDrugs/PrescriptionDrugs",
+                        "id": "drilldown-tab3",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Supplemental Health Ins.",
+                        "data-val-file-prefix": "./data/Dental_Vision/Dental_Vision",
+                        "id": "drilldown-tab4",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Disability & Accident Ins.",
+                        "data-val-file-prefix": "./data/DisabilityAccident/DisabilityAccident",
+                        "id": "drilldown-tab5",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Coverage for Specific Health Services",
+                        "data-val-file-prefix": "./data/Specific_Services/Specific_Services",
+                        "id": "drilldown-tab6",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Wellness",
+                        "data-val-file-prefix": "./data/Wellness/Wellness",
+                        "id": "drilldown-tab7",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    }
+                ]
+                SHRM.utils.retirement = [
+                    {
+                        "name": "Retirement",
+                        "data-val-file-prefix": "./data/Financial_Retirement/Financial_Retirement",
+                        "id": "drilldown-tab1",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "401(k)",
+                        "data-val-file-prefix": "./data/Financial_DCRSP/Financial_DCRSP",
+                        "id": "drilldown-tab2",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Education and Financial Wellness",
+                        "data-val-file-prefix": "./data/Financial_Education/Financial_Education",
+                        "id": "drilldown-tab3",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Other Retirement",
+                        "data-val-file-prefix": "./data/Financial_Other/Financial_Other",
+                        "id": "drilldown-tab4",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    }
+                ]
+                SHRM.utils.leave = [
+                    {
+                        "name": "Vacation & Sick",
+                        "data-val-file-prefix": "./data/Leave_Vacay_Sick/Leave_Vacay_Sick",
+                        "id": "drilldown-tab1",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Parental",
+                        "data-val-file-prefix": "./data/Leave_Parental/Leave_Parental",
+                        "id": "drilldown-tab2",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Family",
+                        "data-val-file-prefix": "./data/Leave_Family/Leave_Family",
+                        "id": "drilldown-tab3",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    },
+                    {
+                        "name": "Other",
+                        "data-val-file-prefix": "./data/Leave_Other/Leave_Other",
+                        "id": "drilldown-tab4",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    }
+                ]
+                SHRM.utils.flexibility = [
+                    {
+                        "name": "Flex Work",
+                        "data-val-file-prefix": "./data/Flexible_Work/Flexible_Work",
+                        "id": "drilldown-tab1",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    }
+                ]
+                SHRM.utils.family = [
+                    {
+                        "name": "Family Friendly",
+                        "data-val-file-prefix": "./data/Family_Friendly/Family_Friendly",
+                        "id": "drilldown-tab1",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    }
+                ]
+                SHRM.utils.profdev = [
+                    {
+                        "name": "Professional Development",
+                        "data-val-file-prefix": "./data/Prof_Development/Prof_Development",
+                        "id": "drilldown-tab1",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    }
+                ]
+                SHRM.utils.wellness = [
+                    {
+                        "name": "Wellness",
+                        "data-val-file-prefix": "./data/Wellness/Wellness",
+                        "id": "drilldown-tab1",
+                        "data-val-filterby": "by-1",
+                        "data-val-config-keys": "['region','industry','orgsize']",
+                        "data-val-config-path": "./data/config.csv"
+                    }
+                ]
+
+                SHRM.utils.data = {}
+                SHRM.utils.data.tableheader = [
+                    {"c1":"Type of Plan","c2":"2016","c3":"2017","c4":"2018","c5":"2019","c6":"2020","c7":"1 year change","c8":"","c9":""}
+                ]
+                SHRM.utils.data.tabledata = [
+                    {"eventCategory":"General Health","eventLabel":"all","plan_type":"Preferred provider organization (PPO)", "y1":"84%","y2":"85%","y3":"84%","y4":"86%","y5":"79%","delta":"-7%","indicator":"2","sparkline_data":"84,85,84,86,79"},
+                    {"eventCategory":"General Health","eventLabel":"all","plan_type":"Health maintenance organization (HMO)", "y1":"32%","y2":"34%","y3":"35%","y4":"34%","y5":"34%","delta":"0%","indicator":"0","sparkline_data":"32,34,35,34,34"},
+                    {"eventCategory":"General Health","eventLabel":"all","plan_type":"High-deductible health plan (HDHP) that is linked with a savings/spending account", "y1":"--","y2":"--","y3":"--","y4":"61%","y5":"59%","delta":"-2%","indicator":"-1","sparkline_data":"61,59"},
+                    {"eventCategory":"General Health","eventLabel":"all","plan_type":"High-deductible health plan (HDHP) that is NOT linked with a savings/spending account", "y1":"17%","y2":"19%","y3":"29%","y4":"19%","y5":"16%","delta":"-3%","indicator":"-2","sparkline_data":"17,19,29,19,16"},
+                    {"eventCategory":"General Health","eventLabel":"all","plan_type":"Point of service (POS)", "y1":"21%","y2":"21%","y3":"17%","y4":"19%","y5":"13%","delta":"-6%","indicator":"-2","sparkline_data":"21,21,17,19,13"},
+                    {"eventCategory":"General Health","eventLabel":"all","plan_type":"Exclusive provider organization (EPO)", "y1":"9%","y2":"9%","y3":"7%","y4":"9%","y5":"9%","delta":"0%","indicator":"0","sparkline_data":"9,9,7,9,9"},
+                    {"eventCategory":"General Health","eventLabel":"all","plan_type":"Indemnity plan (fee-for-service)", "y1":"7%","y2":"8%","y3":"4%","y4":"6%","y5":"4%","delta":"-2%","indicator":"-2","sparkline_data":"7,8,4,6,4"},
+                    {"eventCategory":"General Health","eventLabel":"NE","plan_type":"Preferred provider organization (PPO)", "y1":"84%","y2":"85%","y3":"84%","y4":"86%","y5":"79%","delta":"-7%","indicator":"2","sparkline_data":"84,85,84,86,79"},
+                    {"eventCategory":"General Health","eventLabel":"NE","plan_type":"Health maintenance organization (HMO)", "y1":"32%","y2":"34%","y3":"35%","y4":"34%","y5":"34%","delta":"0%","indicator":"0","sparkline_data":"32,34,35,34,34"},
+                    {"eventCategory":"General Health","eventLabel":"S","plan_type":"High-deductible health plan (HDHP) that is linked with a savings/spending account", "y1":"--","y2":"--","y3":"--","y4":"61%","y5":"59%","delta":"-2%","indicator":"-1","sparkline_data":"61,59"},
+                    {"eventCategory":"General Health","eventLabel":"S","plan_type":"High-deductible health plan (HDHP) that is NOT linked with a savings/spending account", "y1":"17%","y2":"19%","y3":"29%","y4":"19%","y5":"16%","delta":"-3%","indicator":"-2","sparkline_data":"17,19,29,19,16"},
+                    {"eventCategory":"General Health","eventLabel":"S","plan_type":"Point of service (POS)", "y1":"21%","y2":"21%","y3":"17%","y4":"19%","y5":"13%","delta":"-6%","indicator":"-2","sparkline_data":"21,21,17,19,13"},
+                    {"eventCategory":"General Health","eventLabel":"W","plan_type":"Exclusive provider organization (EPO)", "y1":"9%","y2":"9%","y3":"7%","y4":"9%","y5":"9%","delta":"0%","indicator":"0","sparkline_data":"9,9,7,9,9"},
+                    {"eventCategory":"General Health","eventLabel":"W","plan_type":"Indemnity plan (fee-for-service)", "y1":"7%","y2":"8%","y3":"4%","y4":"6%","y5":"4%","delta":"-2%","indicator":"-2","sparkline_data":"7,8,4,6,4"}
+                ]
+
+                initDefaults('by-1', ['region','industry','orgsize'])   // ('by-1', ['region','industry','orgsize'], 'benefitsPortal', 'healthcare', null, 'drilldown-tab1')
+                
+                console.timeEnd('Page load');
+            });
+        </script>
+
+        <style>
+            body {
+                font-family: 'Montserrat', sans-serif;
+                font-weight: 400;
+            }
+
+            .indicator_significant_down { color: #BD2A96 }
+            .indicator_significant_up { color: #7AB022 }
+            .indicator_not_significant { color: #D3D3D3 }
+
+            .research_findings {
+                width: 100%;
+                max-width: 100%;
+                margin-bottom: 20px;
+                padding-left: 25px;
+                padding-right: 25px;
+                font-size: 14px;
+                font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+            }
+
+            .research_findings>tbody>tr>td{
+                line-height: 1.42857143;
+                vertical-align: top;
+                border-top: 1px solid #ddd;
+                padding-top: 5px;
+                padding-bottom: 5px;
+                padding-right: 15px;
+                padding-left: 15px;
+            }
+            
+            .research_findings>thead>tr>th {
+                padding:5px;
+                font-size: 14px;
+                font-weight: bold;
+                vertical-align: bottom;
+                border-bottom: 2px solid #ddd;
+                line-height: 1.42857143;
+                width: 60px
+            }
+
+            .inlinesparkline {
+                width: 60;
+                height: 20;
+            }
+
+            .table {
+                padding: 5px !important;
+                line-height: 1.42857143 !important;
+                vertical-align: top !important;
+                border-top: 1px solid #ddd !important;
+                font-family: "Helvetica Neue",Helvetica,Arial,sans-serif !important;
+                font-size: 14px !important;
+                
+            }
+
+            .table>thead>tr>th {
+                font-weight: bold !important;
+                padding: 5px !important;
+            }
+
+            .table>tbody>tr>td {
+                padding: 5px !important;
+            }
+
+            .dropdown-item {
+                font-weight: 500;
+            }
+
+            div.drilldown {
+                background-color:white;
+                margin-left: 20px;
+            }
+
+            .hidden {
+                display: none;
+            }
+
+            div.responsive_container {
+                position: absolute;
+                overflow: hidden;
+                display: block;
+                width: 100%;
+                height: 100%;
+            }
+
+            span.drilldown_footer {
+                font-family: Roboto, sans-serif;
+                font-weight: 400;
+                font-size: 11px;
+                text-decoration: none;
+                color: #888;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                text-align: center;
+                padding-left:25px;
+                width: 100%;
+            }
+
+            a.nav-link {color: #333333;}
+
+            .nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active {color: #000000; font-weight: 500;}
+
+            .nav-tabs .nav-link {margin-top: 10px;}
+
+            .bootstrap-select {margin-top: 5px;}
+
+            @media screen and (max-width: 1275px) {
+                .nav_layer1{ display: contents; }
+                .nav_layer2{ display: none; }
+            }
+
+            @media screen and (min-width: 1275px) {
+                .nav_layer1{ display: none; }
+                .nav_layer2{ display: block; }
+            }
+
+            iframe.responsive_iframe {
+                position: relative;
+                width: 100%;
+                min-width: 600px;
+                min-height: 200px;
+            }
+            /*
+            .bootstrap-select>.dropdown-toggle.bs-placeholder, .bootstrap-select>.dropdown-toggle.bs-placeholder:active, .bootstrap-select>.dropdown-toggle.bs-placeholder:focus, .bootstrap-select>.dropdown-toggle.bs-placeholder:hover {
+                color: #000;
+            }
+            */
+
+            @media not all and (min-resolution:.001dpcm) { 
+                @supports (-webkit-appearance:none) {
+                    .bootstrap-select {
+                        height: 35px;
+                        margin-bottom: 15px;
+                    }
+                }
+            }
+
+            
+        </style>
+        
+    </head>
+
+    <body ostyle="max-width:1275px" class="hidden">
+        <!-- Google Tag Manager (noscript) -->
+        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXX" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+        <!-- End Google Tag Manager (noscript) -->
+        <div class="drilldown" id="drilldown_benefits_2020">
+            <div class="tab-content" oid="tabs_Content">
+                <div class="nav_layer2">
+                    <!-- HTML for Bootstrap Tabs, assuming the screen size is wide enough -->
+                    <ul class="nav nav-tabs" id="tabs" role="tablist" data-bind="foreach: SHRM.utils.tabs">
+                        <li class="nav-item">
+                            <a class="nav-link" data-bind="text: name, attr: {id: id, href: '#' + id}" data-toggle="tab"role="tab" aria-controls="home" aria-selected="true"></a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="nav_layer1">
+                    <!-- HTML for BootStrap SelectList, assuming the screen size is too small for the tabs. -->
+                    <select class="col-md-4 selectpicker navpicker" data-size="9" data-bind="foreach: SHRM.utils.tabs">
+                        <option data-bind="text: name, attr: {value: id}"></option>
+                    </select>
+                </div>
+                
+                <div class="nav_layer3">
+                    <select class="col-md-4 selectpicker-1" data-size="9" tabindex="-98">
+                        <option value="" data-val="all">All (Regions, Industries and Org Sizes)</option>
+                    </select>
+                    <!-- The following block of HTML should be kept, so we can enable it later if needed -->
+                    <!-- This is used if we want to have a drop down for region, for industry and for org size  -->
+                    <!--
+                    <span class="ors"> OR </span>
+                    <select required="required" class="col-md-2 selectpicker selectpicker-2" data-size="6">
+                        <option value="" data-val="all">All Industries</option>
+                    </select>
+                    <span class="ors"> OR </span>
+                    <select required="required" class="col-md-2 selectpicker selectpicker-3" data-size="6">
+                        <option value="" data-val="all">All Orgs</option>
+                    </select>
+                    -->
+                    <div class="col-md-4" style="display:inline-block">
+                        <button type="button" class="btn btn-primary btn-sm btn-filter hidden"><span class="fas fa-filter" aria-hidden="true"></span> Filter </button>
+                        <button id="spinner" class="btn btn-primary hidden" type="button" style="font-size:14px;width: 92.08px;" disabled>
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        </button>
+                        <div class="btn-group" role="group">
+                            <button id="btnExportGroup" type="button" class="btn btn-primary dropdown-toggle btn-sm btn-export" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="width: 92.08px;">
+                                Export
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="btnExportGroup">
+                                <a class="dropdown-item export_as export_as_csv" alt-href='CSV' href="#">as CSV</a>
+                                <a class="dropdown-item export_as export_as_image" alt-href='Image' href="#">as Image</a>
+                                <a class="dropdown-item export_as export_as_pdf" alt-href='PDF' href="#">as PDF</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <iframe class="responsive_iframe hidden" src="about:blank" allowtransparency="true" frameborder="0" onerror=="alert('error')"></iframe>
+                </div>
+                
+                <div oclass="hidden" style="width:100%;padding:25px">
+                    <table class="research_findings">
+                        <thead data-bind="foreach: SHRM.utils.data.tableheader">
+                            <tr>
+                                <th style="padding:5px;font-size: 14px;width:100%" data-bind="text: c1"></th>
+                                <th data-bind="text: c2"></th><th data-bind="text: c3"></th><th data-bind="text: c4"></th><th data-bind="text: c5"></th><th data-bind="text: c6"></th><th data-bind="text: c7" colspan="2"></th><th data-bind="text: c8"></th></th></tr>
+                        </thead>
+                        <tbody data-bind="foreach: filtered_results">
+                            <tr>
+                                <td style="text-align: left;"><span data-bind="text: plan_type" style="color: grey; font-weight: bold"></span></td>
+                                <td style="text-align: right; width:60px" data-bind="text: y1"></td>
+                                <td style="text-align: right;" data-bind="text: y2"></td>
+                                <td style="text-align: right;" data-bind="text: y3"></td>
+                                <td style="text-align: right;" data-bind="text: y4"></td>
+                                <td style="text-align: right;" data-bind="text: y5"></td>
+                                <td style="text-align: center"><span data-bind="text: delta" style="padding-right:10px"></span></td>
+                                <td style="text-align: center"><span style="width:14px;vertical-align: top;text-align: center;" class="indicator" data-bind="attr: { myindicator: indicator }"></span></td>
+                                <td style="text-align: right;"><div class="inlinesparkline" data-bind="attr: {myvalues: sparkline_data}"></div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <span class="drilldown_footer">Chart: &#169; 2020 Society for Human Resource Management &middot; Source: Employee Benefits 2020</span>
+        </div>
+        <iframe id="gtm" src="about:blank" ostyle="display:none" class='hidden'></iframe>
+        <div class='drilldown_image' ostyle="max-width: 1000px" style="max-width: 1000px;z-index:-1000;top:0px;left:-25999px;position:absolute"></div>
+    </body>
+</html> 
