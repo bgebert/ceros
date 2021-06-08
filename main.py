@@ -70,7 +70,7 @@ parent = "SHRM.utils.healthcare"
 filter_types = ["all",
                 "M","NE","S","W",
                 "SM","MD","LG","XL",
-                "CONSTR","EDUHLTH","FINANCE","GOVT","LSHOSP","MANFCT","OTHER","OTHSERV","PROFBUS","R_W_T_U"]
+                "CONSTR","FINANCE","GOVTEDU","HLTHSS","LSHOSP","MANFCT","OTHER","OTHSERV","PROFBUS","R_W_T_U"]
 
 with open('my_json.txt', 'w') as the_file:
 
